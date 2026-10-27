@@ -19,11 +19,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-        # ⚠️ IF YOUR SCRIPT USES OTHER LIBRARIES, UNCOMMENT THE LINE BELOW AND LIST THEM:
         # pip install requests pandas openpyxl
 
     - name: Build EXE
-      # ⚠️ REPLACE "main.py" BELOW WITH YOUR EXACT PYTHON FILE NAME
       run: pyinstaller --onefile export_stratos.py 
 
     - name: Upload EXE Asset
