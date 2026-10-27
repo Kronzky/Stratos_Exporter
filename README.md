@@ -105,4 +105,3 @@ Each TSV contains tab-separated columns matching standard FDR layout:
 The **`Descent fpm`** column is **not stored as per-frame data in the Stratos database**:
 - Inside `landing-analyser.db`, each recorded sample frame only contains the simulator's raw instrument vertical speed (`vs`). Stratos never stores pre-calculated `Descent fpm` values in the database; it computes them dynamically on the fly in its desktop UI.
 - The export script reproduces this by calculating the geometric descent rate dynamically using the rolling 500 ms AGL linear regression algorithm, applying the official landing rate at the touchdown frame. (See the file `Descent_FPM.md` for more detail.)
-- Summary wind data is preserved in the companion `.json` metadata file rather than duplicated across the telemetry table.
