@@ -5,7 +5,14 @@ import sqlite3
 from pathlib import Path
 
 DB_PATH = os.path.expandvars(r"%APPDATA%\Stratos\plugins-data\landing-analyser\landing-analyser.db")
-OUTPUT_DIR = Path(__file__).resolve().parent / "stratos_logs"
+
+# Support running as a standalone PyInstaller EXE or raw script
+if getattr(sys, "frozen", False):
+    APP_DIR = Path(sys.executable).resolve().parent
+else:
+    APP_DIR = Path(__file__).resolve().parent
+
+OUTPUT_DIR = APP_DIR / "stratos_logs"
 
 
 def get_all_reports():
@@ -81,7 +88,7 @@ def list_reports(rows):
     print("-" * 65)
 
     for idx, row in enumerate(rows, start=1):
-        db_id, flight_id, created_at, dep, arr, aircraft, raw_json = row
+        db_id, flight_id, created_at, dep, arr, aircraft, raw_json, landing_rate_fpm = row
         try:
             data = json.loads(raw_json)
             flight = data.get("flight", {})
