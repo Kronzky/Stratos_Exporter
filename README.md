@@ -1,6 +1,4 @@
 [README.md](https://github.com/user-attachments/files/33994718/README.md)
-# Stratos_Exporter
-Export flight logs from Stratos ACARS system
 # Stratos Flight Telemetry Exporter
 
 A standalone, zero-dependency Python tool to inspect and export high-resolution flight telemetry and landing reports directly from the local Stratos database.
