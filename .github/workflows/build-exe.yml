@@ -1,0 +1,33 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch: # Allows users to trigger the build manually with a button click
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # Change to match your script's version
+
+    - name: Install PyInstaller
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        # If your script needs extra libraries (like pandas), add them here:
+        # pip install pandas
+
+    - name: Build EXE
+      run: pyinstaller --onefile main.py
+
+    - name: Upload EXE Asset
+      uses: actions/upload-artifact@v4
+      with:
+        name: Standalone-EXE
+        path: dist/main.exe
