@@ -1,3 +1,4 @@
+[Descent_FPM.md](https://github.com/user-attachments/files/33996719/Descent_FPM.md)
 # Technical Guide: Descent Rate (FPM) vs. Simulator Vertical Speed (Sim VS) in Stratos
 
 **Context:** Walker Air Flight Telemetry & Stratos Landing Analyser  
@@ -195,6 +196,14 @@ To make landing analysis useful, Stratos has to zero the scale so that **0.0 ft 
    e.altitudeAglGear = Math.round((e.altitudeAglGear - this.gearAglGroundOffset) * 10) / 10;
    ```
    This ensures that regardless of whether you fly a light Cessna or a commercial airliner, the altitude reading (`AGL ft`) is calibrated so that **`0.0 ft` represents the exact moment the tires touch the runway in a level attitude**.
+
+4. **Database Storage & Offline Independence:**  
+   - **How It Is Stored:** The calibrated gear offset is not stored as an independent variable in `landing-analyser.db`. Instead, it is **baked directly into the recorded `agl` value** of every telemetry frame before being written to disk.
+   - **Why Offline Calculations Do Not Depend on Gear Height:** The linear regression algorithm computes the **slope** (rate of change over time: change in altitude divided by change in time), not absolute elevation:
+     - *With gear calibration:* Wheels dropping from **5.0 ft to 0.0 ft** in 1 second = **−300 FPM**.
+     - *Without gear calibration:* Fuselage dropping from **17.0 ft to 12.0 ft** in 1 second = **−300 FPM**.
+
+   Because any constant height offset cancels out to zero when computing rate of change, offline tools (both Stratos's desktop app and external exporters) produce the exact same descent rate whether gear height is calibrated or not. Gear calibration exists solely so the altitude column displays `0.0 ft` at touchdown rather than resting fuselage height.
 
 ---
 
