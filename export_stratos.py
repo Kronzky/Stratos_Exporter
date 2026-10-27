@@ -183,33 +183,37 @@ def export_single_report(row):
     return True
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("\nUsage:")
-        print("  python export_stratos.py ?          - List all available flight logs in database")
-        print("  python export_stratos.py *          - Export all flight logs to 'stratos_logs/'")
-        print("  python export_stratos.py <CALLSIGN> - Export matching callsign (e.g. WAT1234)")
-        print()
-        return
+def process_command(cmd: str, rows: list) -> bool:
+    """Processes a user command (?, *, index number, or callsign). Returns True to continue or False to quit."""
+    cmd = cmd.strip()
+    if not cmd:
+        return True
+    if cmd.lower() in ("q", "quit", "exit"):
+        return False
 
-    arg = sys.argv[1].strip()
-    rows = get_all_reports()
-
-    if arg == "?":
+    if cmd == "?":
         list_reports(rows)
-        return
+        return True
 
-    if arg == "*":
-        print(f"Exporting all {len(rows)} flights to '{OUTPUT_DIR.resolve()}'...\n")
-        count = 0
-        for row in rows:
-            if export_single_report(row):
-                count += 1
-        print(f"\nDone! Exported {count} flights.")
-        return
+    if cmd == "*":
+        print(f"\nExporting all {len(rows)} flights to '{OUTPUT_DIR.resolve()}'...\n")
+        count = sum(1 for r in rows if export_single_report(r))
+        print(f"\nDone! Exported {count} flights.\n")
+        return True
+
+    # Direct selection by list index number (e.g. '1' or '44')
+    if cmd.isdigit():
+        idx = int(cmd)
+        if 1 <= idx <= len(rows):
+            print(f"\nExporting flight #{idx}...")
+            export_single_report(rows[idx - 1])
+            print(f"\nOutput saved in '{OUTPUT_DIR.resolve()}'.\n")
+        else:
+            print(f"\nInvalid index {idx}. Valid range is 1 to {len(rows)}.\n")
+        return True
 
     # Filter by callsign
-    target_callsign = arg.upper()
+    target_callsign = cmd.upper()
     matching_rows = []
     for r in rows:
         try:
@@ -221,13 +225,52 @@ def main():
 
     if not matching_rows:
         print(f"\nNo flights found matching callsign '{target_callsign}'.")
-        print("Run 'python export_stratos.py ?' to view all available callsigns.\n")
-        return
+        print("Type '?' to view all available flights.\n")
+        return True
 
-    print(f"Found {len(matching_rows)} flight(s) matching '{target_callsign}':\n")
+    print(f"\nFound {len(matching_rows)} flight(s) matching '{target_callsign}':\n")
     for r in matching_rows:
         export_single_report(r)
     print(f"\nOutput saved in '{OUTPUT_DIR.resolve()}'.\n")
+    return True
+
+
+def main():
+    rows = get_all_reports()
+
+    # CLI argument mode
+    if len(sys.argv) >= 2:
+        arg = sys.argv[1].strip()
+        process_command(arg, rows)
+        return
+
+    # Interactive mode (when launched with no arguments or double-clicked)
+    print("=" * 60)
+    print("           Stratos Flight Log Exporter")
+    print("=" * 60)
+    print(f"Loaded {len(rows)} flight reports from Stratos database.")
+
+    try:
+        while True:
+            print("-" * 60)
+            print("Options:")
+            print("  ?          - List all flights")
+            print("  *          - Export all flights")
+            print("  <callsign> - Export by callsign (e.g. WAT7789)")
+            print("  <number>   - Export by list index # (e.g. 1)")
+            print("  q          - Quit")
+            print("-" * 60)
+            choice = input("Enter choice: ").strip()
+            if not choice:
+                continue
+            if not process_command(choice, rows):
+                break
+    except (KeyboardInterrupt, EOFError):
+        pass
+
+    # Keep console open when run as a standalone .exe via double-click
+    if getattr(sys, "frozen", False):
+        input("\nPress Enter to exit...")
 
 
 if __name__ == "__main__":
