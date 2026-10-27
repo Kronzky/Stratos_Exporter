@@ -1,13 +1,5 @@
-[Descent_FPM.md](https://github.com/user-attachments/files/33996719/Descent_FPM.md)
+[Descent_FPM.md](https://github.com/user-attachments/files/34023149/Descent_FPM.md)
 # Technical Guide: Descent Rate (FPM) vs. Simulator Vertical Speed (Sim VS) in Stratos
-
-**Context:** Walker Air Flight Telemetry & Stratos Landing Analyser  
-**Source Code References:**  
-- `%APPDATA%\Stratos\plugins\landing-analyser\ui\index.js`  
-- `%APPDATA%\Stratos\plugins\landing-analyser\background\index.js`  
-- `%APPDATA%\Stratos\plugins-data\landing-analyser\landing-analyser.db`  
-
----
 
 ## 1. The Core Difference
 
@@ -55,120 +47,6 @@ Instead of trusting the delayed cockpit gauge, Stratos calculates the true desce
 
 ---
 
-### Original Minified Code (Stratos)
-
-Directly from `%APPDATA%\Stratos\plugins\landing-analyser\ui\index.js`:
-
-```javascript
-function Tn(e, r, n = 500) {
-  const i = e[r].t - n, s = e[r].onGround, l = [];
-  for (let p = r; p >= 0 && !(e[p].t < i || e[p].onGround !== s); p--)
-    l.unshift(e[p]);
-  if (l.length < 5) return null;
-  const u = l[0].t;
-  if (l[l.length - 1].t - u < 100) return null;
-  let c = 0, x = 0;
-  for (const p of l)
-    c += p.t - u, x += p.agl;
-  c /= l.length, x /= l.length;
-  let v = 0, f = 0;
-  for (const p of l) {
-    const b = p.t - u - c;
-    v += b * (p.agl - x), f += b * b;
-  }
-  return f === 0 ? null : v / f * 6e4;
-}
-```
-
----
-
-### Readable Translation (JavaScript)
-
-Here is the exact same function rewritten with clear variable names and step-by-step comments:
-
-```javascript
-// ========================================================
-// Calculate Geometric Descent Rate in Feet per Minute (FPM)
-// ========================================================
-function calculateDescentFpm(recordedFrames, currentRowIndex) {
-  const windowMilliseconds = 500; // Look back over the last half-second
-  const minSamplesRequired = 5;   // Need at least 5 readings to be reliable
-  const minTimeSpanMs = 100;      // Need at least 100 ms between first and last reading
-
-  const currentFrame = recordedFrames[currentRowIndex];
-  const currentTimeMs = currentFrame.timeMs;
-  const currentGroundState = currentFrame.onGround;
-
-  // ------------------------------------------------------
-  // Step 1: Collect readings from the last 500 milliseconds
-  // ------------------------------------------------------
-  const windowFrames = [];
-  for (let i = currentRowIndex; i >= 0; i--) {
-    const frame = recordedFrames[i];
-    const timeDifference = currentTimeMs - frame.timeMs;
-
-    // Stop if older than 500 ms or if we cross the touchdown boundary
-    if (timeDifference > windowMilliseconds || frame.onGround !== currentGroundState) {
-      break;
-    }
-    // Add this frame to our recent history window
-    windowFrames.unshift(frame);
-  }
-
-  // ------------------------------------------------------
-  // Step 2: Safety check - verify we have enough data
-  // ------------------------------------------------------
-  if (windowFrames.length < minSamplesRequired) {
-    return "—"; // Not enough points yet, show a dash
-  }
-
-  const oldestTimeMs = windowFrames[0].timeMs;
-  const newestTimeMs = windowFrames[windowFrames.length - 1].timeMs;
-  if (newestTimeMs - oldestTimeMs < minTimeSpanMs) {
-    return "—"; // Time span is too short, show a dash
-  }
-
-  // ------------------------------------------------------
-  // Step 3: Find average time and average altitude
-  // ------------------------------------------------------
-  let totalTime = 0;
-  let totalAltitude = 0;
-  for (const frame of windowFrames) {
-    totalTime += (frame.timeMs - oldestTimeMs);
-    totalAltitude += frame.altitudeAgl;
-  }
-  const averageTime = totalTime / windowFrames.length;
-  const averageAltitude = totalAltitude / windowFrames.length;
-
-  // ------------------------------------------------------
-  // Step 4: Calculate the trend slope (drop per millisecond)
-  // ------------------------------------------------------
-  let numerator = 0;
-  let denominator = 0;
-  for (const frame of windowFrames) {
-    const deltaTime = (frame.timeMs - oldestTimeMs) - averageTime;
-    const deltaAltitude = frame.altitudeAgl - averageAltitude;
-
-    numerator += deltaTime * deltaAltitude;
-    denominator += deltaTime * deltaTime;
-  }
-
-  if (denominator === 0) {
-    return "—";
-  }
-
-  const dropPerMillisecond = numerator / denominator;
-
-  // ------------------------------------------------------
-  // Step 5: Convert to Feet per Minute (60,000 ms in 1 minute)
-  // ------------------------------------------------------
-  const descentRateFpm = dropPerMillisecond * 60000;
-  return Math.round(descentRateFpm);
-}
-```
-
----
-
 ## 4. Practical Flight Factors Explained
 
 ### A. Landing Gear Height Detection & Calibration
@@ -177,24 +55,15 @@ Flight simulators measure an aircraft's height from the center of the airplane (
 
 Because of this, even when your wheels are firmly rolling on the runway, the simulator's raw altitude reading is never zero—it still reads roughly **4 feet** in a Cessna 172, and **12 to 16 feet** in an airliner.
 
-To make landing analysis useful, Stratos has to zero the scale so that **0.0 ft means your wheels are touching the runway**. It does this automatically using a calibration system in its core engine (`%APPDATA%\Stratos\core\core.mjs`):
+To make landing analysis useful, Stratos has to zero the scale so that **0.0 ft means your wheels are touching the runway**. It does this automatically using a calibration system in its core engine:
 
 1. **Preflight Ground Sampling:**  
    During ground operations—specifically while the aircraft is in `PUSH_BACK` or `TAXI` state and `planeOnground = true`—Stratos continuously collects samples of the raw gear altitude into a buffer (`gearOffsetSamples`).
 
 2. **Calculating the Ground Offset:**  
-   From these ground samples, Stratos establishes a fixed baseline offset for that specific aircraft model:
-   ```javascript
-   // In Stratos core.mjs:
-   this.gearAglGroundOffset = t.altitudeAglGear;
-   ```
+   From these ground samples, Stratos establishes a fixed baseline offset for that specific aircraft model.
 
 3. **In-Flight Real-Time Zeroing:**  
-   During flight and landing, Stratos continuously subtracts this calibrated baseline offset from every incoming frame sample:
-   ```javascript
-   // In Stratos core.mjs:
-   e.altitudeAglGear = Math.round((e.altitudeAglGear - this.gearAglGroundOffset) * 10) / 10;
-   ```
    This ensures that regardless of whether you fly a light Cessna or a commercial airliner, the altitude reading (`AGL ft`) is calibrated so that **`0.0 ft` represents the exact moment the tires touch the runway in a level attitude**.
 
 4. **Database Storage & Offline Independence:**  
