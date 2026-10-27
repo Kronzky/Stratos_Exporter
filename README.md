@@ -1,17 +1,21 @@
-[README.md](https://github.com/user-attachments/files/33994718/README.md)
+[README.md](https://github.com/user-attachments/files/33996029/README.md)
 # Stratos Flight Telemetry Exporter
 
-A standalone, zero-dependency Python tool to inspect and export high-resolution flight telemetry and landing reports directly from the local Stratos database.
+A standalone tool to inspect and export high-resolution flight telemetry and landing reports directly from the local Stratos database.
 
-**Script:** [export_stratos.py](export_stratos.py)  
-**Output Directory:** [stratos_logs/](stratos_logs/)  
-**Requirements:** Standard Python 3.8+ (uses only built-in standard library modules: `sqlite3`, `json`, `os`, `sys`, `pathlib`). No external packages or internet connection required.
+Available both as a **standalone Windows executable** (`export_stratos.exe`) and as an open-source **Python script** ([export_stratos.py](export_stratos.py)).
+
+- **Output Directory:** [stratos_logs/](stratos_logs/) (created automatically next to the executable/script)
+- **Requirements:** 
+  - **Executable:** Windows 10/11 (zero dependencies, Python not required).
+  - **Python Script:** Python 3.8+ (uses only built-in standard library modules: `sqlite3`, `json`, `os`, `sys`, `pathlib`).
 
 ---
 
 ## 1. Features
 
 - **100% Standalone & Portable:** Directly reads the local Stratos SQLite database in read-only mode (`%APPDATA%\Stratos\plugins-data\landing-analyser\landing-analyser.db`). Runs on any machine with Stratos installed without requiring external files or network access.
+- **Interactive or CLI:** Can be double-clicked in Windows Explorer to open an interactive menu, or scripted via command-line arguments.
 - **True Geometric Descent Rate:** Implements Stratos's exact 500 ms rolling linear regression algorithm (`Tn`) to calculate real-time geometric descent rate from AGL changes, alongside the simulator's raw instrument readout (`Sim VS`).
 - **Exact Touchdown Alignment:** Identifies the precise touchdown frame at the initial `onGround = true` transition, recording the official landing rate.
 - **Consistent Decimal Precision:** Enforces formatted float precision across all rows:
@@ -23,37 +27,49 @@ A standalone, zero-dependency Python tool to inspect and export high-resolution 
 
 ---
 
-## 2. Command-Line Usage
+## 2. Usage
 
-The exporter accepts three simple arguments:
+### A. Interactive Mode (Double-Click)
+When you double-click `export_stratos.exe` (or run it without arguments), an interactive prompt launches:
 
-### A. List All Flights in the Database (`?`)
-Displays a formatted overview table of all flights recorded in Stratos:
-```bash
-python export_stratos.py ?
-```
-**Example Output:**
 ```text
-Available Stratos Flight Logs (44 total):
-Idx  Date & Time (UTC)    Callsign   Route          Aircraft Frames 
------------------------------------------------------------------
-1    2026-10-03 20:37:06  WAT494     PANC->PAEN     DHC6     490    
-2    2026-10-03 22:08:12  WAT3931    PAEN->PAKL     DHC6     491    
-...
-44   2026-10-24 22:27:01  WAT7003    ENSA->ENAS     DHC6     494    
+============================================================
+           Stratos Flight Log Exporter
+============================================================
+Loaded 44 flight reports from Stratos database.
+------------------------------------------------------------
+Options:
+  ?          - List all flights
+  *          - Export all flights
+  <callsign> - Export by callsign (e.g. WAT7789)
+  <number>   - Export by list index # (e.g. 44)
+  q          - Quit
+------------------------------------------------------------
+Enter choice: 
 ```
 
-### B. Export All Flights (`*`)
-Batch exports every flight in the database into the `stratos_logs/` subfolder:
-```bash
-python export_stratos.py "*"
-```
+Type `?` to view all flights, enter a callsign or index number to export, and type `q` when finished. The window remains open until you exit.
 
-### C. Export a Specific Flight by Callsign
-Filters and exports only flights matching the specified callsign (case-insensitive):
-```bash
-python export_stratos.py WAT7789
-```
+### B. Command-Line Arguments
+For terminal users or automated batch scripts, you can pass arguments directly:
+
+- **List All Flights:**
+  ```cmd
+  export_stratos.exe ?
+  ```
+  *(or `python export_stratos.py ?`)*
+
+- **Export All Flights:**
+  ```cmd
+  export_stratos.exe *
+  ```
+  *(or `python export_stratos.py "*"`)*
+
+- **Export by Flight Number or Callsign:**
+  ```cmd
+  export_stratos.exe 44
+  export_stratos.exe WAT7789
+  ```
 
 ---
 
